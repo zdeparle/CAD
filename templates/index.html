@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Text to CAD</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.134/examples/js/loaders/STLLoader.js"></script>
+</head>
+<body>
+<h1>Text to CAD</h1>
+<input type="text" id="desc" placeholder="cube 10 10 10" size="40">
+<button onclick="generate()">Generate</button>
+<div id="viewer" style="width:600px;height:400px;"></div>
+<a id="download" href="#" download="model.step" style="display:none">Download STEP</a>
+<script>
+let scene, camera, renderer;
+function init(){
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, 600/400, 0.1, 1000);
+    camera.position.z = 60;
+    renderer = new THREE.WebGLRenderer({antialias:true});
+    renderer.setSize(600, 400);
+    document.getElementById('viewer').appendChild(renderer.domElement);
+    const light = new THREE.DirectionalLight(0xffffff, 1);
+    light.position.set(0,0,1).normalize();
+    scene.add(light);
+    animate();
+}
+function animate(){
+    requestAnimationFrame(animate);
+    renderer.render(scene, camera);
+}
+function loadSTL(url){
+    while(scene.children.length>1) scene.remove(scene.children[1]);
+    const loader = new THREE.STLLoader();
+    loader.load(url, function(geometry){
+        const material = new THREE.MeshNormalMaterial();
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+    });
+}
+function generate(){
+    const desc = document.getElementById('desc').value;
+    fetch('/generate', {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({description: desc})
+    }).then(r=>r.json()).then(data=>{
+        if(data.error){alert(data.error);return;}
+        loadSTL(data.preview);
+        const link = document.getElementById('download');
+        link.href = data.step;
+        link.style.display = 'block';
+    }).catch(err=>alert(err));
+}
+init();
+</script>
+</body>
+</html>
